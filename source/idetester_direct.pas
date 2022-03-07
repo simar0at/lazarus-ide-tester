@@ -201,6 +201,7 @@ end;
 
 destructor TTestSessionDirect.Destroy;
 begin
+  FreeAndNil(FTestResult);
   inherited Destroy;
 end;
 

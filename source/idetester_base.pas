@@ -176,6 +176,7 @@ type
   protected
     procedure setStatusMessage(s : String);
   public
+    destructor Destroy; override;
     property listener : TTestListener read FListener write FListener;
     property settings : TTestSettingsProvider read FSettings write FSettings;
 
@@ -236,6 +237,12 @@ end;
 procedure TTestEngine.setStatusMessage(s: String);
 begin
   FOnStatusMessage(self, s);
+end;
+
+destructor TTestEngine.Destroy;
+begin
+  FreeAndNil(FListener);
+  inherited Destroy;
 end;
 
 function TTestEngine.canStop: boolean;
