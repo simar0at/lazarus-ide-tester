@@ -71,7 +71,7 @@ type
     function makeSession : TTestEngineExternalSession; override;
     procedure FinishTests; override;
   public
-    function prepareToRunTests : TTestSession; override;
+    function prepareToRunTests(aTestThread : TThread = nil) : TTestSession; override;
     function OpenProject(Sender: TObject; AProject: TLazProject): TModalResult;
     function startRun(Sender: TObject; var Handled: boolean): TModalResult;
     procedure endRun(Sender: TObject);
@@ -280,8 +280,9 @@ begin
     sleep(50);
 end;
 
-function TTestEngineIDE.prepareToRunTests: TTestSession;
+function TTestEngineIDE.prepareToRunTests(aThread: TThread = nil): TTestSession;
 begin
+  FTestThread := aTestThread;
   Result := TTestEngineIDESession.create;
   setStatusMessage(format(rs_IdeTester_Msg_Compiling, [LazarusIDE.ActiveProject.CustomSessionData['idetester.testproject']]));
   (result as TTestEngineIDESession).compile;

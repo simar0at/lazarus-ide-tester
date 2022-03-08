@@ -150,7 +150,7 @@ type
     function doesReload : boolean; override;
     function canParameters : boolean; override;
 
-    function prepareToRunTests : TTestSession; override;
+    function prepareToRunTests(aTestThread : TThread = nil) : TTestSession; override;
     procedure runTest(session : TTestSession; node : TTestNode); override;
     procedure terminateTests(session: TTestSession); override;
     procedure finishTestRun(session : TTestSession); override;
@@ -615,8 +615,9 @@ begin
   Result := true;
 end;
 
-function TTestEngineExternal.prepareToRunTests: TTestSession;
+function TTestEngineExternal.prepareToRunTests(aTestThread: TThread = nil): TTestSession;
 begin
+  FTestThread := aTestThread;
   result := TTestEngineExternalSession.create; // this will hold the external process
 end;
 
