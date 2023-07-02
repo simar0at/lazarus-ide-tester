@@ -174,6 +174,7 @@ type
     FOnStatusMessage: TLogEvent;
     FSettings : TTestSettingsProvider;
   protected
+    FTestThread: TThread;
     procedure setStatusMessage(s : String);
   public
     destructor Destroy; override;
@@ -196,7 +197,7 @@ type
     function canParameters : boolean; virtual;
     function canTestProject : boolean; virtual;
 
-    function prepareToRunTests : TTestSession; virtual; abstract; // get ready to run tests - do whatever is requred (e.g. compile in the ide)
+    function prepareToRunTests(aTestThread: TThread = nil) : TTestSession; virtual; abstract; // get ready to run tests - do whatever is requred (e.g. compile in the ide)
     function setUpDebug(session : TTestSession; node : TTestNode) : boolean; virtual;
 
     procedure runTest(session : TTestSession; node : TTestNode); virtual; abstract; // run the named test, and any sub tests that are checked.
@@ -204,6 +205,7 @@ type
     procedure finishTestRun(session : TTestSession); virtual; abstract; // clean up after a test run (must free session)
 
     procedure openSource(test : TTestNode; mode : TOpenSourceMode); virtual;
+    procedure setThreadModeMainThread; virtual;
   end;
 
 procedure readLocation(loc : String; out srcUnit : String; out line : integer);
@@ -239,6 +241,12 @@ begin
   FOnStatusMessage(self, s);
 end;
 
+destructor TTestEngine.Destroy;
+begin
+  FreeAndNil(FListener);
+  inherited Destroy;
+end;
+
 function TTestEngine.canStop: boolean;
 begin
   result := true;
@@ -269,9 +277,9 @@ begin
   // nothing
 end;
 
-destructor TTestEngine.Destroy;
+procedure TTestEngine.setThreadModeMainThread;
 begin
-  listener.Free;
+  // only useful with threaded engines like direct
 end;
 
 { TTestNode }

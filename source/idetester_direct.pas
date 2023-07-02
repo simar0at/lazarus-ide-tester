@@ -73,9 +73,14 @@ type
 
   TTestEngineDirect = class (TTestEngine)
   private
+    FSess: TTestSessionDirect;
+    FNode: TTestNode;
+    FThreadMode: TTestEngineThreadMode;
     Function registerTestNode(testList : TTestNodeList; parent : TTestNode; test : TTest) : TTestNode;
     procedure BuildTree(testList : TTestNodeList; rootTest: TTestNode; aSuite: TTestSuite);
+    procedure runTestSynchronized;
   public
+    constructor Create;
     procedure loadAllTests(testList : TTestNodeList; manual : boolean); override;
     function threadMode : TTestEngineThreadMode; override;
     function canTerminate : boolean; override;
@@ -83,10 +88,11 @@ type
     function canDebug : boolean; override;
     function canStart : boolean; override;
 
-    function prepareToRunTests : TTestSession; override;
+    function prepareToRunTests(aTestThread: TThread = nil) : TTestSession; override;
     procedure runTest(session : TTestSession; node : TTestNode); override;
     procedure terminateTests(session: TTestSession); override;
     procedure finishTestRun(session : TTestSession); override;
+    procedure setThreadModeMainThread; override;
   end;
 
 
@@ -201,7 +207,7 @@ end;
 
 destructor TTestSessionDirect.Destroy;
 begin
-  FTestResult.Free;
+  FreeAndNil(FTestResult);
   inherited Destroy;
 end;
 
@@ -256,9 +262,19 @@ begin
   end;
 end;
 
+procedure TTestEngineDirect.runTestSynchronized;
+begin
+  (FNode.data as TTest).Run(FSess.FTestResult);
+end;
+
+constructor TTestEngineDirect.Create;
+begin
+  FThreadMode:=ttmEither;
+end;
+
 function TTestEngineDirect.threadMode: TTestEngineThreadMode;
 begin
-  result := ttmEither;
+  result := FThreadMode;
 end;
 
 function TTestEngineDirect.canTerminate: boolean;
@@ -281,30 +297,33 @@ begin
   result := true;
 end;
 
-function TTestEngineDirect.prepareToRunTests: TTestSession;
+function TTestEngineDirect.prepareToRunTests(aTestThread: TThread = nil): TTestSession;
 begin
+  FTestThread := aTestThread;
   result := TTestSessionDirect.Create;
 end;
 
 procedure TTestEngineDirect.runTest(session: TTestSession; node: TTestNode);
 var
-  sess : TTestSessionDirect;
   listenerProxy : ITestListener;
 begin
   listenerProxy := TTestEngineDirectListener.create(listener, node) as ITestListener;
 
-  sess := session as TTestSessionDirect;
+  FSess := session as TTestSessionDirect;
+  FNode := node;
   try
-    sess.FTestResult.AddListener(listenerProxy);
+    FSess.FTestResult.AddListener(listenerProxy);
     if (node.data is TTestSuite) then
       listener.StartTestSuite(node);
     try
-      (node.data as TTest).Run(sess.FTestResult);
+      if Assigned(FTestThread) and (threadMode = ttmMainThread)
+      then TThread.Synchronize(FTestThread, runTestSynchronized)
+      else (FNode.data as TTest).Run(FSess.FTestResult);
     finally
       if (node.data is TTestSuite) then
         listener.EndTestSuite(node);
     end;
-    sess.FTestResult.RemoveListener(listenerProxy);
+    FSess.FTestResult.RemoveListener(listenerProxy);
   finally
     listener.EndRun(node);
     listenerProxy := nil;
@@ -319,6 +338,11 @@ end;
 procedure TTestEngineDirect.finishTestRun(session: TTestSession);
 begin
   session.free;
+end;
+
+procedure TTestEngineDirect.setThreadModeMainThread;
+begin
+  FThreadMode:=ttmMainThread;
 end;
 
 end.

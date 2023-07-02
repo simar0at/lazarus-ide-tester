@@ -197,6 +197,7 @@ type
     procedure tvTestsRemoveFromSelection(Sender: TBaseVirtualTree; Node: PVirtualNode);
   private
     FEngine : TTestEngine;
+    FThreadMode : TTestEngineThreadMode;
     FStore : TTestSettingsProvider;
 
     FViewMode : TViewMode;
@@ -251,6 +252,7 @@ type
     // these two must be set before the Form is shown
     property engine : TTestEngine read FEngine write SetEngine;
     property store : TTestSettingsProvider read FStore write SetStore; // either an ini in AppConfig, or stored in the project settings somewhere?
+    procedure setThreadModeMainThread;
   end;
 
 var IdeTesterForm : TIdeTesterForm;
@@ -322,7 +324,7 @@ end;
 constructor TTestThread.Create(tester: TIdeTesterForm);
 begin
   FTester := tester;
-  inherited Create(false);
+  inherited Create(true);
 end;
 
 { TIdeTesterForm }
@@ -389,7 +391,10 @@ begin
     if store = nil then
       store := TTestIniSettingsProvider.create(IncludeTrailingPathDelimiter(getAppConfigDir(false))+'fhir-tests-settings.ini');
     if engine = nil then
+    begin
       engine := TTestEngineDirect.create;
+      if FThreadMode = ttmMainThread then engine.setThreadModeMainThread;
+    end;
 
     engine.listener := TTesterFormListener.create(self);
     if not engine.doesReload then
@@ -898,9 +903,10 @@ begin
   if FTestsTotal > 0 then
   begin
     FRunningTest := FTestInfo[0];
-    StartTestRun(false);
     FThread := TTestThread.create(self);
+    StartTestRun(false);
     FThread.FreeOnTerminate := true;
+    FThread.Resume;
   end
   else
     ShowMessage(rs_IdeTester_Err_No_Tests);
@@ -923,9 +929,10 @@ begin
       if ti.execute and (not ti.hasChildren) then
         inc(FTestsTotal);
     FRunningTest := node;
-    StartTestRun(false);
     FThread := TTestThread.create(self);
+    StartTestRun(false);
     FThread.FreeOnTerminate := true;
+    FThread.Resume;
   end;
 end;
 
@@ -981,9 +988,10 @@ begin
   if FTestsTotal > 0 then
   begin
     FRunningTest := FTestInfo[0];
-    StartTestRun(false);
     FThread := TTestThread.create(self);
+    StartTestRun(false);
     FThread.FreeOnTerminate := true;
+    FThread.Resume;
   end
   else
     ShowMessage(rs_IdeTester_Err_No_FailedTests);
@@ -1202,6 +1210,11 @@ begin
   ATest.finish;
 end;
 
+procedure TIdeTesterForm.setThreadModeMainThread;
+begin
+  FThreadMode:=ttmMainThread;
+end;
+
 procedure TIdeTesterForm.StartTestRun(debug : boolean);
 var
   ti : TTestNode;
@@ -1217,7 +1230,7 @@ begin
   setActionStatus(1, 0, 0);
   timer1.Enabled := true;
 
-  FSession := engine.prepareToRunTests;
+  FSession := engine.prepareToRunTests(FThread);
   for ti in FTestInfo do
     if not ti.execute then
       FSession.skipTest(ti);
@@ -1286,9 +1299,10 @@ begin
         inc(FTestsTotal);
     FRunningTest := node;
 
-    StartTestRun(true);
     FThread := TTestThread.create(self);
+    StartTestRun(true);
     FThread.FreeOnTerminate := true;
+    FThread.Resume;
   end;
 end;
 

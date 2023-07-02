@@ -71,7 +71,7 @@ type
     function makeSession : TTestEngineExternalSession; override;
     procedure FinishTests; override;
   public
-    function prepareToRunTests : TTestSession; override;
+    function prepareToRunTests(aTestThread : TThread = nil) : TTestSession; override;
     function OpenProject(Sender: TObject; AProject: TLazProject): TModalResult;
     function startRun(Sender: TObject; var Handled: boolean): TModalResult;
     procedure endRun(Sender: TObject);
@@ -150,18 +150,20 @@ end;
 procedure TConsoleOutputProcessor.Process;
 var
   BytesRead, total : longint;
-  Buffer           : TBytes;
+  // Dynamic byte array crashes with access violation $FFFFFFFF !?!
+  Buffer           : TByteArray;
   start : UInt64;
 begin
   start := GetTickCount64;
   total := 0;
   repeat
-    SetLength(Buffer, BUF_SIZE);
     if FProcess.Output.NumBytesAvailable > 0 then
     begin
-      BytesRead := FProcess.Output.Read(Buffer, BUF_SIZE);
+      // This is from TStream.ReadBuffer
+      BytesRead := FProcess.Output.Read(PByte(@Buffer)[0], 32766);
       total := total + BytesRead;
-      processOutput(TEncoding.UTF8.GetAnsiString(Buffer, 0, BytesRead));
+      // This is used internally by TEncoding actually
+      processOutput(TEncoding.UTF8.GetAnsiString(Pointer(@Buffer[0]), 0, BytesRead));
     end;
     if (total = 0) and (GetTickCount64 - start > CONSOLE_TIMEOUT) then
       exit;
@@ -278,8 +280,9 @@ begin
     sleep(50);
 end;
 
-function TTestEngineIDE.prepareToRunTests: TTestSession;
+function TTestEngineIDE.prepareToRunTests(aThread: TThread = nil): TTestSession;
 begin
+  FTestThread := aTestThread;
   Result := TTestEngineIDESession.create;
   setStatusMessage(format(rs_IdeTester_Msg_Compiling, [LazarusIDE.ActiveProject.CustomSessionData['idetester.testproject']]));
   (result as TTestEngineIDESession).compile;
