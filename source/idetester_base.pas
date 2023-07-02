@@ -176,6 +176,7 @@ type
   protected
     procedure setStatusMessage(s : String);
   public
+    destructor Destroy; override;
     property listener : TTestListener read FListener write FListener;
     property settings : TTestSettingsProvider read FSettings write FSettings;
 
@@ -266,6 +267,11 @@ end;
 procedure TTestEngine.openSource(test: TTestNode; mode : TOpenSourceMode);
 begin
   // nothing
+end;
+
+destructor TTestEngine.Destroy;
+begin
+  listener.Free;
 end;
 
 { TTestNode }

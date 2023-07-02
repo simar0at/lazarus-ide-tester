@@ -201,6 +201,7 @@ end;
 
 destructor TTestSessionDirect.Destroy;
 begin
+  FTestResult.Free;
   inherited Destroy;
 end;
 
@@ -306,6 +307,7 @@ begin
     sess.FTestResult.RemoveListener(listenerProxy);
   finally
     listener.EndRun(node);
+    listenerProxy := nil;
   end;
 end;
 
