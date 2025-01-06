@@ -34,7 +34,7 @@ interface
 
 uses
   Classes, SysUtils, Process, IniFiles,
-  UITypes, Forms, Dialogs,
+  System.UITypes, Forms, Dialogs,
   ProjectIntf, LazIDEIntf, MacroIntf, CompOptsIntf, IDEIntf,
   idetester_strings, idetester_runtime, idetester_base, idetester_external;
 
